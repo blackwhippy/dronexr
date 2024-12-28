@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Asteroids in XR</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Troika -->
+    <script src="https://cdn.jsdelivr.net/npm/troika-three-text@0.39.0/dist/troika-three-text.min.js"></script>
+
+    <!-- Custom scripts -->
+    <script>
+        // Setup scene, camera, and renderer
+        import { VRButton } from 'three/examples/jsm/webxr/VRButton'
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true;
+        document.body.appendChild(renderer.domElement);
+        document.body.appendChild(VRButton.createButton(renderer));
+
+        // Add a virtual cube as the environment
+        const cubeGeometry = new THREE.BoxGeometry(40, 40, 40);
+        const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.BackSide });
+        const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        scene.add(cube);
+
+        // Ship
+        const shipGeometry = new THREE.BufferGeometry();
+        const shipVertices = new Float32Array([
+            0, 2, 0, -1, -1, 0, 1, -1, 0, 0, 2, 0,
+        ]);
+        shipGeometry.setAttribute('position', new THREE.BufferAttribute(shipVertices, 3));
+        const shipMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+        const ship = new THREE.Line(shipGeometry, shipMaterial);
+        scene.add(ship);
+        ship.position.z = -15; // Position ship in front of the player
+
+        const shipState = { velocity: new THREE.Vector2(0, 0), rotation: 0, thrusting: false };
+
+        // Score and Lives display
+        const scoreText = new Text();
+        scoreText.text = "Score: 0";
+        scoreText.fontSize = 1;
+        scoreText.position.set(-15, 18, -20);
+        scene.add(scoreText);
+
+        const livesText = new Text();
+        livesText.text = "Lives: 3";
+        livesText.fontSize = 1;
+        livesText.position.set(15, 18, -20);
+        scene.add(livesText);
+
+        let score = 0;
+        let lives = 3;
+
+        // Asteroids array
+        const asteroids = [];
+
+        function createAsteroid(size, x, y) {
+            const points = [];
+            const segments = 8;
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                const r = size * (1 + Math.random() * 0.4 - 0.2);
+                points.push(new THREE.Vector3(Math.cos(angle) * r, Math.sin(angle) * r, 0));
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const asteroid = new THREE.Line(geometry, material);
+            asteroid.position.set(x, y, -15);
+            asteroid.velocity = new THREE.Vector2(Math.random() * 0.1 - 0.05, Math.random() * 0.1 - 0.05);
+            asteroid.size = size;
+            scene.add(asteroid);
+            asteroids.push(asteroid);
+        }
+
+        function initAsteroids() {
+            for (let i = 0; i < 10; i++) {
+                createAsteroid(2, Math.random() * 20 - 10, Math.random() * 20 - 10);
+            }
+        }
+
+        initAsteroids();
+
+        // Input handling for ship movement
+        const keys = {};
+        document.addEventListener('keydown', (e) => keys[e.key] = true);
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        function getDirectionVector() {
+            const direction = new THREE.Vector3(0, 1, 0);
+            direction.applyAxisAngle(new THREE.Vector3(0, 0, 1), ship.rotation.z);
+            return direction;
+        }
+
+        function updateGame() {
+            // Ship controls
+            if (keys['ArrowLeft']) ship.rotation.z += 0.05;
+            if (keys['ArrowRight']) ship.rotation.z -= 0.05;
+            if (keys['ArrowUp']) {
+                const direction = getDirectionVector();
+                shipState.velocity.x += direction.x * 0.01;
+                shipState.velocity.y += direction.y * 0.01;
+            }
+
+            ship.position.x += shipState.velocity.x;
+            ship.position.y += shipState.velocity.y;
+            shipState.velocity.multiplyScalar(0.99);
+
+            // Wrap position
+            if (ship.position.x > 20) ship.position.x = -20;
+            if (ship.position.x < -20) ship.position.x = 20;
+            if (ship.position.y > 20) ship.position.y = -20;
+            if (ship.position.y < -20) ship.position.y = 20;
+
+            // Update asteroids
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                asteroid.position.x += asteroid.velocity.x;
+                asteroid.position.y += asteroid.velocity.y;
+                if (asteroid.position.x > 20) asteroid.position.x = -20;
+                if (asteroid.position.x < -20) asteroid.position.x = 20;
+                if (asteroid.position.y > 20) asteroid.position.y = -20;
+                if (asteroid.position.y < -20) asteroid.position.y = 20;
+
+                // Check collision with ship
+                const dist = ship.position.distanceTo(asteroid.position);
+                if (dist < asteroid.size + 1) {
+                    lives--;
+                    livesText.text = `Lives: ${lives}`;
+                    if (lives <= 0) {
+                        alert('Game Over!');
+                        location.reload();
+                    }
+                    ship.position.set(0, 0, -15);
+                    shipState.velocity.set(0, 0);
+                }
+            }
+        }
+
+        // Animation loop
+        renderer.setAnimationLoop(() => {
+            updateGame();
+            renderer.render(scene, camera);
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
