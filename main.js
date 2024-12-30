@@ -8,12 +8,16 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
+
+// Set the clear color to fully transparent
+renderer.setClearColor(0x000000, 0); // RGB: Black, Alpha: 0
+
 document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
 
 // Add a virtual cube as the environment
 const cubeGeometry = new THREE.BoxGeometry(40, 40, 40);
-const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.BackSide });
+const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.BackSide, transparent: true, opacity: 0, });
 const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
 scene.add(cube);
 
@@ -199,19 +203,18 @@ function updateGame() {
 
 
         // Check ship collision
-        if (checkCollision(asteroid, ship)) {
-            lives--;
-            document.getElementById('lives').textContent = `Lives: ${lives}`;
-            if (lives <= 0) {
-                gameOver = true;
-                alert('Game Over! Score: ' + score);
-            } else {
-                // Reset ship position
-                ship.position.set(0, 0, 0);
-                shipState.velocity.set(0, 0);
-            }
-    
-        }
+        //if (checkCollision(asteroid, ship)) {
+        //    lives--;
+        //    document.getElementById('lives').textContent = `Lives: ${lives}`;
+        //    if (lives <= 0) {
+        //        gameOver = true;
+        //       alert('Game Over! Score: ' + score);
+        //    } else {
+        //        // Reset ship position
+        //        ship.position.set(0, 0, 0);
+        //        shipState.velocity.set(0, 0);
+        //    }
+        //}
     }
 }
 // Animation loop
