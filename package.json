@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "deploy": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^6.0.6",
+    "vite-plugin-gh-pages": "^1.0.1"
+  },
+  "dependencies": {
+    "three": "^0.171.0",
+    "troika-three-text": "^0.52.3"
+  }
+}
